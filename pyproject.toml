@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rpa-helper"
+version = "0.0.1"
+description = "Python helper library for RPA, Excel, image and automation tasks"
+readme = "README.md"
+requires-python = ">=3.7"
+
+authors = [
+    { name = "Mark Shen" }
+]
+
+dependencies = [
+    "openpyxl>=3.1.0"
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
