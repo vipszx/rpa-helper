@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rpa-helper"
-version = "0.0.1"
+version = "0.0.2"
 description = "Python helper library for RPA, Excel, image and automation tasks"
 readme = "README.md"
 requires-python = ">=3.7"

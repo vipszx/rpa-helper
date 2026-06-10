@@ -1,6 +1,50 @@
 from openpyxl import load_workbook
 
 
+class ExcelRow:
+    def __init__(self, sheet, row_num, values):
+        self.sheet = sheet
+        self.row_num = row_num
+        self.values = list(values)
+
+    def __getitem__(self, key):
+        idx = self.sheet.header_index[key]
+
+        if idx >= len(self.values):
+            return None
+
+        return self.values[idx]
+
+    def __setitem__(self, key, value):
+        self.sheet.set_value(self.row_num, key, value)
+
+        idx = self.sheet.header_index[key]
+
+        while len(self.values) <= idx:
+            self.values.append(None)
+
+        self.values[idx] = value
+
+    def __contains__(self, key):
+        return key in self.sheet.header_index
+
+    def get(self, key, default=None):
+        try:
+            value = self[key]
+            return default if value is None else value
+        except KeyError:
+            return default
+
+    def to_dict(self):
+        return {
+            header: self.get(header)
+            for header in self.sheet.headers
+        }
+
+    def __repr__(self):
+        return f"<ExcelRow row={self.row_num}>"
+
+
 class ExcelSheet:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -22,20 +66,21 @@ class ExcelSheet:
         self.ws.cell(row=1, column=col_idx + 1, value=name)
         self.headers.append(name)
         self.header_index[name] = col_idx
-        # 保存一下，确保新增列立即生效
-        self.save()
+
         return col_idx
 
+    def ensure_columns(self, *columns):
+        for col in columns:
+            self.add_column(col)
+
     def require_columns(self, *columns):
-        """
-        检查字段是否都存在
-        返回缺失字段列表
-        """
-        return [
+        missing = [
             col
             for col in columns
             if col not in self.header_index
         ]
+
+        return missing
 
     def get_value(self, row, field, default=None):
         idx = self.header_index.get(field)
@@ -48,13 +93,17 @@ class ExcelSheet:
             self.add_column(field)
         col_idx = self.header_index[field] + 1
         self.ws.cell(row=row_num, column=col_idx, value=value)
-        # 每写一行就保存
-        self.save()
+
+    def iter_rows(self):
+        for row_num, values in enumerate(self.ws.iter_rows(min_row=2, values_only=True), start=2):
+            yield row_num, values
+
+    def rows(self):
+        for row_num, values in enumerate(self.ws.iter_rows(min_row=2, values_only=True), start=2):
+            yield ExcelRow(self, row_num, values)
 
     def save(self, file_path=None):
         self.wb.save(file_path or self.file_path)
 
-    def iter_rows(self):
-        """生成器，每次返回 row_num 和值元组"""
-        for row_num, row in enumerate(self.ws.iter_rows(min_row=2, values_only=True), start=2):
-            yield row_num, row
+    def close(self):
+        self.wb.close()
