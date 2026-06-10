@@ -1,4 +1,5 @@
-from openpyxl import load_workbook
+import os
+from openpyxl import Workbook, load_workbook
 
 
 class ExcelRow:
@@ -48,12 +49,22 @@ class ExcelRow:
 class ExcelSheet:
     def __init__(self, file_path):
         self.file_path = file_path
-        self.wb = load_workbook(file_path)
+
+        # 文件不存在 → 创建
+        if os.path.exists(file_path):
+            self.wb = load_workbook(file_path)
+        else:
+            self.wb = Workbook()
+
         self.ws = self.wb.active
 
         # 缓存表头
         self.headers = [cell.value for cell in self.ws[1]]
-        self.header_index = {name: idx for idx, name in enumerate(self.headers) if name}
+        if all(v is None for v in self.headers):
+            self.headers = []
+            self.header_index = {}
+        else:
+            self.header_index = {name: idx for idx, name in enumerate(self.headers) if name}
 
     def has_column(self, name):
         return name in self.header_index
@@ -94,6 +105,16 @@ class ExcelSheet:
         col_idx = self.header_index[field] + 1
         self.ws.cell(row=row_num, column=col_idx, value=value)
 
+    def append(self, data: dict):
+        for key in data.keys():
+            if key not in self.header_index:
+                self.add_column(key)
+
+        row = []
+        for header in self.headers:
+            row.append(data.get(header))
+        self.ws.append(row)
+
     def iter_rows(self):
         for row_num, values in enumerate(self.ws.iter_rows(min_row=2, values_only=True), start=2):
             yield row_num, values
@@ -107,3 +128,10 @@ class ExcelSheet:
 
     def close(self):
         self.wb.close()
+
+if __name__ == "__main__":
+    excel = ExcelSheet(r"C:\Users\Administrator\Desktop\test.xlsx")
+    for row in excel.rows():
+        print(row.to_dict())
+    # excel.append({"name": "test", "value": 1})
+    # excel.save()
