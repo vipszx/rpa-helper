@@ -75,22 +75,37 @@ class ExcelSheet:
     def get_sheet_names(self):
         return self.wb.sheetnames
 
+    def sheet_exists(self, sheet_name):
+        return sheet_name in self.wb.sheetnames
+
+    def get_current_sheet_name(self):
+        return self.ws.title
+
     def switch_sheet(self, sheet_name):
-        if sheet_name not in self.wb.sheetnames:
+        if not self.sheet_exists(sheet_name):
             raise ValueError(f"Sheet not found: {sheet_name}")
 
         self._set_active_sheet(self.wb[sheet_name])
         return self
 
     def add_sheet(self, sheet_name, index=None):
-        if sheet_name in self.wb.sheetnames:
+        if self.sheet_exists(sheet_name):
             raise ValueError(f"Sheet already exists: {sheet_name}")
 
         self._set_active_sheet(self.wb.create_sheet(title=sheet_name, index=index))
         return self
 
+    def rename_sheet(self, old_name, new_name):
+        if not self.sheet_exists(old_name):
+            raise ValueError(f"Sheet not found: {old_name}")
+        if old_name != new_name and self.sheet_exists(new_name):
+            raise ValueError(f"Sheet already exists: {new_name}")
+
+        self.wb[old_name].title = new_name
+        return self
+
     def delete_sheet(self, sheet_name):
-        if sheet_name not in self.wb.sheetnames:
+        if not self.sheet_exists(sheet_name):
             raise ValueError(f"Sheet not found: {sheet_name}")
         if len(self.wb.sheetnames) == 1:
             raise ValueError("Cannot delete the only sheet")
@@ -108,6 +123,9 @@ class ExcelSheet:
 
     def has_column(self, name):
         return name in self.header_index
+
+    def get_columns(self):
+        return self.headers
 
     def add_column(self, name):
         if self.has_column(name):
@@ -132,6 +150,16 @@ class ExcelSheet:
         ]
 
         return missing
+
+    def clear_sheet(self, keep_header=True):
+        if keep_header:
+            if self.ws.max_row > 1:
+                self.ws.delete_rows(2, self.ws.max_row - 1)
+        else:
+            self.ws.delete_rows(1, self.ws.max_row)
+
+        self._refresh_headers()
+        return self
 
     def get_value(self, row, field, default=None):
         idx = self.header_index.get(field)
