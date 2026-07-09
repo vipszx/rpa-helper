@@ -57,14 +57,54 @@ class ExcelSheet:
             self.wb = Workbook()
 
         self.ws = self.wb.active
+        self._refresh_headers()
 
-        # 缓存表头
+    def _refresh_headers(self):
         self.headers = [cell.value for cell in self.ws[1]]
         if all(v is None for v in self.headers):
             self.headers = []
             self.header_index = {}
         else:
             self.header_index = {name: idx for idx, name in enumerate(self.headers) if name}
+
+    def _set_active_sheet(self, worksheet):
+        self.ws = worksheet
+        self.wb.active = self.wb.index(worksheet)
+        self._refresh_headers()
+
+    def get_sheet_names(self):
+        return self.wb.sheetnames
+
+    def switch_sheet(self, sheet_name):
+        if sheet_name not in self.wb.sheetnames:
+            raise ValueError(f"Sheet not found: {sheet_name}")
+
+        self._set_active_sheet(self.wb[sheet_name])
+        return self
+
+    def add_sheet(self, sheet_name, index=None):
+        if sheet_name in self.wb.sheetnames:
+            raise ValueError(f"Sheet already exists: {sheet_name}")
+
+        self._set_active_sheet(self.wb.create_sheet(title=sheet_name, index=index))
+        return self
+
+    def delete_sheet(self, sheet_name):
+        if sheet_name not in self.wb.sheetnames:
+            raise ValueError(f"Sheet not found: {sheet_name}")
+        if len(self.wb.sheetnames) == 1:
+            raise ValueError("Cannot delete the only sheet")
+
+        delete_index = self.wb.sheetnames.index(sheet_name)
+        current_sheet_name = self.ws.title
+        self.wb.remove(self.wb[sheet_name])
+
+        if sheet_name == current_sheet_name:
+            next_index = min(delete_index, len(self.wb.worksheets) - 1)
+            self._set_active_sheet(self.wb.worksheets[next_index])
+        else:
+            self._set_active_sheet(self.wb[current_sheet_name])
+        return self
 
     def has_column(self, name):
         return name in self.header_index
